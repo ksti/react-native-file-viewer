@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import androidx.core.content.FileProvider;
+
+import android.os.Build;
 import android.webkit.MimeTypeMap;
 
 import com.facebook.react.bridge.ActivityEventListener;
@@ -88,27 +90,31 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
 
     if (shareIntent.resolveActivity(pm) != null) {
       try {
-        getCurrentActivity().startActivityForResult(intentActivity, currentId + RN_FILE_VIEWER_REQUEST);
+        if (isMIUI()) {
+          getCurrentActivity().startActivity(intentActivity);
+        } else {
+          getCurrentActivity().startActivityForResult(intentActivity, currentId + RN_FILE_VIEWER_REQUEST);
+        }
         sendEvent(OPEN_EVENT, currentId, null);
       }
       catch(Exception e) {
         sendEvent(OPEN_EVENT, currentId, e.getMessage());
       }
-      } else {
-        try {
-          if (showStoreSuggestions) {
-            if(mimeType == null) {
-              throw new Exception("It wasn't possible to detect the type of the file");
-            }
-            Intent storeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=" + mimeType + "&c=apps"));
-            getCurrentActivity().startActivity(storeIntent);
+    } else {
+      try {
+        if (showStoreSuggestions) {
+          if(mimeType == null) {
+            throw new Exception("It wasn't possible to detect the type of the file");
           }
-          throw new Exception("No app associated with this mime type");
+          Intent storeIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://search?q=" + mimeType + "&c=apps"));
+          getCurrentActivity().startActivity(storeIntent);
         }
-        catch(Exception e) {
-          sendEvent(OPEN_EVENT, currentId, e.getMessage());
-        }
+        throw new Exception("No app associated with this mime type");
       }
+      catch(Exception e) {
+        sendEvent(OPEN_EVENT, currentId, e.getMessage());
+      }
+    }
   }
 
   @Override
@@ -124,5 +130,14 @@ public class RNFileViewerModule extends ReactContextBaseJavaModule {
     }
     reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
       .emit(eventName, params);
+  }
+
+  public static boolean isMIUI() {
+    String manufacturer = Build.MANUFACTURER;
+    //这个字符串可以自己定义,例如判断华为就填写huawei,魅族就填写meizu
+    if ("xiaomi".equalsIgnoreCase(manufacturer)) {
+      return true;
+    }
+    return false;
   }
 }
